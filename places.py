@@ -116,8 +116,13 @@ def main():
     ade_val_ann_file = os.path.join(data_dir, "ade20k/annotations/predictions_val.json")
 
     places_root = "/data/vision/torralba/ade20k-places/data"
-    places_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/split00/pred.json"
-    cat_name = None
+    places_split00_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/split00/pred.json"
+    places_car_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/predictions/categories/car.json"
+
+    #cat_name = None
+    #places_ann_file = places_split00_ann_file
+    cat_name = "car"
+    places_ann_file = places_car_ann_file
 
     train_dataset = datasets.coco.COCODataset(
         places_ann_file, places_root,
@@ -128,8 +133,17 @@ def main():
             transforms.ToTensor(),
         ]))
 
-    val_dataset = datasets.coco.COCODataset(
-        val_ann_file, ade_val_ann_file,
+    ade_train_dataset = datasets.coco.COCODataset(
+        ade_train_ann_file, ade_root,
+        cat_name=cat_name,
+        transform=transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+        ]))
+
+    ade_val_dataset = datasets.coco.COCODataset(
+        ade_val_ann_file, ade_root,
         cat_name=cat_name,
         transform=transforms.Compose([
             transforms.Resize(256),
@@ -146,8 +160,12 @@ def main():
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
+    ade_train_loader = torch.utils.data.DataLoader(
+        ade_train_dataset, batch_size=args.batch_size, shuffle=False,
+        num_workers=args.workers, pin_memory=True)
+
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=False,
+        ade_val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
     # define lemniscate and loss function (criterion)
@@ -181,7 +199,7 @@ def main():
     cudnn.benchmark = True
 
     if args.evaluate:
-        kNN(0, model, lemniscate, train_loader, val_loader, 200, args.nce_t)
+        kNN(0, model, lemniscate, ade_train_loader, val_loader, 200, args.nce_t, recompute_memory=1)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -193,7 +211,7 @@ def main():
         train(train_loader, model, lemniscate, criterion, optimizer, epoch)
 
         # evaluate on validation set
-        prec1 = NN(epoch, model, lemniscate, train_loader, val_loader)
+        prec1 = NN(epoch, model, lemniscate, ade_train_loader, val_loader, 1, args.nce_t, recompute_memory=1)
 
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
@@ -207,7 +225,7 @@ def main():
             'optimizer' : optimizer.state_dict(),
         }, is_best)
     # evaluate KNN after last epoch
-    kNN(0, model, lemniscate, train_loader, val_loader, 200, args.nce_t)
+    kNN(0, model, lemniscate, ade_train_loader, val_loader, 200, args.nce_t, recompute_memory=1)
 
 
 def train(train_loader, model, lemniscate, criterion, optimizer, epoch):

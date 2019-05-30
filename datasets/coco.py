@@ -67,6 +67,7 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         self.set_train_labels()
 
     def compute_ious(self):
+        print("Computing ious...")
         annotator = SimulatedAnnotator()
         ids = []
         for ann_id in self.ids:
@@ -75,6 +76,7 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
             if ann["iou"] != 0:
                 ids.append(ann_id)
         self.ids = ids
+        print("Done")
 
     def filter_ids(self):
         # filter bad annotations
@@ -147,11 +149,14 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         return image
 
     def prepare_target(self, ann):
-        cat_label = self.json_category_id_to_contiguous_id[ann["category_id"]]
+        if self.cat_name == None:
+            cat_label = self.json_category_id_to_contiguous_id[ann["category_id"]]
+            return cat_label
+
         iou_bin = 0
         if ann["iou"] != None:
             iou_bin = int(ann["iou"]*10) + 1
-        return cat_label
+        return iou_bin
 
     def __len__(self):
         return len(self.ids)
