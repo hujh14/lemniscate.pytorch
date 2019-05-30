@@ -169,12 +169,13 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     # define lemniscate and loss function (criterion)
-    ndata = train_dataset.__len__()
     if args.nce_k > 0:
-        lemniscate = NCEAverage(args.low_dim, ndata, args.nce_k, args.nce_t, args.nce_m).cuda()
+        lemniscate_train = NCEAverage(args.low_dim, train_dataset.__len__(), args.nce_k, args.nce_t, args.nce_m).cuda()
+        lemniscate_ade_train = NCEAverage(args.low_dim, ade_train_dataset.__len__(), args.nce_k, args.nce_t, args.nce_m).cuda()
         criterion = NCECriterion(ndata).cuda()
     else:
-        lemniscate = LinearAverage(args.low_dim, ndata, args.nce_t, args.nce_m).cuda()
+        lemniscate_train = LinearAverage(args.low_dim, train_dataset.__len__(), args.nce_t, args.nce_m).cuda()
+        lemniscate_ade_train = LinearAverage(args.low_dim, ade_train_dataset.__len__(), args.nce_t, args.nce_m).cuda()
         criterion = nn.CrossEntropyLoss().cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
@@ -189,7 +190,7 @@ def main():
             args.start_epoch = checkpoint['epoch']
             best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
-            lemniscate = checkpoint['lemniscate']
+            lemniscate_train = checkpoint['lemniscate']
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
@@ -199,7 +200,7 @@ def main():
     cudnn.benchmark = True
 
     if args.evaluate:
-        kNN(0, model, lemniscate, ade_train_loader, val_loader, 200, args.nce_t, recompute_memory=1)
+        kNN(0, model, lemniscate_ade_train, ade_train_loader, val_loader, 200, args.nce_t, recompute_memory=1)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -208,10 +209,10 @@ def main():
         adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(train_loader, model, lemniscate, criterion, optimizer, epoch)
+        train(train_loader, model, lemniscate_train, criterion, optimizer, epoch)
 
         # evaluate on validation set
-        prec1 = NN(epoch, model, lemniscate, ade_train_loader, val_loader, 1, args.nce_t, recompute_memory=1)
+        prec1 = NN(epoch, model, lemniscate_ade_train, ade_train_loader, val_loader, recompute_memory=1)
 
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
@@ -220,12 +221,12 @@ def main():
             'epoch': epoch + 1,
             'arch': args.arch,
             'state_dict': model.state_dict(),
-            'lemniscate': lemniscate,
+            'lemniscate': lemniscate_train,
             'best_prec1': best_prec1,
             'optimizer' : optimizer.state_dict(),
         }, is_best)
     # evaluate KNN after last epoch
-    kNN(0, model, lemniscate, ade_train_loader, val_loader, 200, args.nce_t, recompute_memory=1)
+    kNN(0, model, lemniscate_ade_train, ade_train_loader, val_loader, 200, args.nce_t, recompute_memory=1)
 
 
 def train(train_loader, model, lemniscate, criterion, optimizer, epoch):

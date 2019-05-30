@@ -5,7 +5,7 @@ from lib.utils import AverageMeter
 import torchvision.transforms as transforms
 import numpy as np
 
-def NN(epoch, net, lemniscate, trainloader, testloader, recompute_memory=0):
+def NN(epoch, net, lemniscate, trainloader, testloader, K, sigma, recompute_memory=0):
     net.eval()
     net_time = AverageMeter()
     cls_time = AverageMeter()
@@ -21,9 +21,15 @@ def NN(epoch, net, lemniscate, trainloader, testloader, recompute_memory=0):
         trainLabels = torch.LongTensor(trainloader.dataset.train_labels).cuda()
 
     if recompute_memory:
+        print("Recomputing memory...")
+        from lib.LinearAverage import LinearAverage
+        ndata = trainloader.dataset.__len__()
+        lemniscate = LinearAverage(128, ndata, sigma, 0.5).cuda()
+        trainFeatures = lemniscate.memory.t()
+
         transform_bak = trainloader.dataset.transform
         trainloader.dataset.transform = testloader.dataset.transform
-        temploader = torch.utils.data.DataLoader(trainloader.dataset, batch_size=100, shuffle=False, num_workers=1)
+        temploader = torch.utils.data.DataLoader(trainloader.dataset, batch_size=100, shuffle=False, num_workers=4)
         for batch_idx, (inputs, targets, indexes) in enumerate(temploader):
             targets = targets.cuda(non_blocking=True)
             batchSize = inputs.size(0)
@@ -79,9 +85,15 @@ def kNN(epoch, net, lemniscate, trainloader, testloader, K, sigma, recompute_mem
     C = trainLabels.max() + 1
 
     if recompute_memory:
+        print("Recomputing memory...")
+        from lib.LinearAverage import LinearAverage
+        ndata = trainloader.dataset.__len__()
+        lemniscate = LinearAverage(128, ndata, sigma, 0.5).cuda()
+        trainFeatures = lemniscate.memory.t()
+
         transform_bak = trainloader.dataset.transform
         trainloader.dataset.transform = testloader.dataset.transform
-        temploader = torch.utils.data.DataLoader(trainloader.dataset, batch_size=100, shuffle=False, num_workers=1)
+        temploader = torch.utils.data.DataLoader(trainloader.dataset, batch_size=100, shuffle=False, num_workers=4)
         for batch_idx, (inputs, targets, indexes) in enumerate(temploader):
             targets = targets.cuda(non_blocking=True)
             batchSize = inputs.size(0)
@@ -133,3 +145,4 @@ def kNN(epoch, net, lemniscate, trainloader, testloader, K, sigma, recompute_mem
     print(top1*100./total)
 
     return top1/total
+
