@@ -169,13 +169,15 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     # define lemniscate and loss function (criterion)
+    ndata = train_dataset.__len__()
+    ndata_ade = ade_train_dataset.__len__()
     if args.nce_k > 0:
-        lemniscate_train = NCEAverage(args.low_dim, train_dataset.__len__(), args.nce_k, args.nce_t, args.nce_m).cuda()
-        lemniscate_ade_train = NCEAverage(args.low_dim, ade_train_dataset.__len__(), args.nce_k, args.nce_t, args.nce_m).cuda()
+        lemniscate_train = NCEAverage(args.low_dim, ndata, args.nce_k, args.nce_t, args.nce_m).cuda()
+        lemniscate_ade_train = NCEAverage(args.low_dim, ndata_ade, args.nce_k, args.nce_t, args.nce_m).cuda()
         criterion = NCECriterion(ndata).cuda()
     else:
-        lemniscate_train = LinearAverage(args.low_dim, train_dataset.__len__(), args.nce_t, args.nce_m).cuda()
-        lemniscate_ade_train = LinearAverage(args.low_dim, ade_train_dataset.__len__(), args.nce_t, args.nce_m).cuda()
+        lemniscate_train = LinearAverage(args.low_dim, ndata, args.nce_t, args.nce_m).cuda()
+        lemniscate_ade_train = LinearAverage(args.low_dim, ndata_ade, args.nce_t, args.nce_m).cuda()
         criterion = nn.CrossEntropyLoss().cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
