@@ -25,9 +25,10 @@ def cluster_places():
     y = np.array(train_dataset.targets)
     X, y = balance_data(X, y)
     print(X.shape, y.shape)
+    label = np.array([train_dataset.get_cat_info(i)["name"] for i in y])
 
-    pca_clustering(X, y, name="places")
-    tsne_clustering(X, y, name="places")
+    pca_clustering(X, label, name="places")
+    tsne_clustering(X, label, name="places")
 
 def cluster_places_car():
     train_dataset = datasets.coco.COCODataset(
@@ -42,4 +43,3 @@ if __name__ == '__main__':
     print(args)
 
     cluster_places()
-    
