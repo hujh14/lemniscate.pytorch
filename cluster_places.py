@@ -24,9 +24,9 @@ def cluster_places():
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
     idxs = np.arange(len(train_dataset))
-    X, y, idxs = balance_categories(X, y, idxs)
-    X, y, idxs = filter_categories(X, y, idxs, np.arange(11))
-    label = np.array([train_dataset.get_cat_info(i)["name"] for i in y])
+    X, y, idxs = balance_categories(X, y, idxs, max_freq=10000)
+    X, y, idxs = filter_categories(X, y, idxs, [4])
+    label = np.array([train_dataset.get_target_label(i) for i in y])
 
     print(X.shape, label.shape)
     pca_clustering(X, label, name="places")

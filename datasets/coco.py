@@ -42,7 +42,7 @@ def has_valid_annotation(anno):
 
 class COCODataset(torchvision.datasets.coco.CocoDetection):
     def __init__(
-        self, ann_file, root, transform=None
+        self, ann_file, root, target_name="category", transform=None
     ):
         super(COCODataset, self).__init__(root, ann_file)
         # sort indices for reproducible results
@@ -59,6 +59,8 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         self.area_threshold = 1000
         self.score_threshold = 0.5
         self.filter_ids()
+
+        self.target_name = target_name
         self.set_targets()
 
     def filter_ids(self):
@@ -118,8 +120,16 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         return image
 
     def prepare_target(self, ann):
-        cat_label = self.json_category_id_to_contiguous_id[ann["category_id"]]
-        return cat_label
+        if self.target_name == "category":
+            cat_label = self.json_category_id_to_contiguous_id[ann["category_id"]]
+            return cat_label
+        elif self.target_name == "score":
+            score_bin = 0
+            if "score" in ann:
+                score_bin = int(ann["score"]*10) + 1
+            return score_bin
+        else:
+            raise Exception("Target name not recognized: {}".format(self.target_name))
 
     def set_targets(self):
         self.targets = []
@@ -134,10 +144,16 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         img = self.coco.imgs[ann["image_id"]]
         return img
 
-    def get_cat_info(self, idx):
-        cat_id = self.contiguous_category_id_to_json_id[idx]
-        cat = self.coco.cats[cat_id]
-        return cat
+    def get_target_label(self, idx):
+        if self.target_name == "category":
+            cat_id = self.contiguous_category_id_to_json_id[idx]
+            cat = self.coco.cats[cat_id]
+            return cat["name"]
+        elif self.target_name == "score":
+            score_label = "[{},{}]".format((idx-1)/10, (idx)/10)
+            return score_label
+        else:
+            raise Exception("Target name not recognized: {}".format(self.target_name))
 
 def crop_square(image, bbox, margin=1.5, crop_size=256):
     x, y, w, h = bbox
