@@ -30,7 +30,7 @@ def cluster_places():
     print(X.shape, label.shape)
     pca_clustering(X, label, name="places")
     tsne_clustering(X, label, name="places")
-    nearest_neighbors(train_dataset, X, n=5, name="places")
+    nearest_neighbors(train_dataset, X, name="places")
 
 def cluster_places_car():
     places_ann_file = places_split00_ann_file
@@ -48,9 +48,9 @@ def cluster_places_car():
     label = np.array([train_dataset.get_cat_info(i)["name"] for i in y])
 
     print(X.shape, label.shape)
-    pca_clustering(X, label, name="places")
-    tsne_clustering(X, label, name="places")
-    nearest_neighbors(train_dataset, X, n=5, name="places")
+    pca_clustering(X, label, name="places_car")
+    tsne_clustering(X, label, name="places_car")
+    nearest_neighbors(train_dataset, X, name="places_car")
 
 
 if __name__ == '__main__':

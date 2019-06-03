@@ -37,7 +37,7 @@ def cluster_cifar():
     print(X.shape, label.shape)
     pca_clustering(X, label, name="cifar")
     tsne_clustering(X, label, name="cifar")
-    nearest_neighbors(train_dataset, X, n=5, name="cifar")
+    nearest_neighbors(train_dataset, X, name="cifar")
 
 def cluster_imagenet():
     imagenet_checkpoint = "checkpoint/lemniscate_resnet18.pth.tar"
@@ -54,7 +54,7 @@ def cluster_imagenet():
     print(X.shape, label.shape)
     pca_clustering(X, label, name="imagenet")
     tsne_clustering(X, label, name="imagenet")
-    nearest_neighbors(train_dataset, X, n=5, name="imagenet")
+    nearest_neighbors(train_dataset, X, name="imagenet")
 
 def filter_categories(X, y, cats):
     X_out = []
