@@ -110,17 +110,12 @@ def main():
 
 
     # Data loading code
-    data_dir = args.data
-    ade_root = os.path.join(data_dir, "ade20k/images")
-    ade_train_ann_file = os.path.join(data_dir, "ade20k/annotations/predictions_train.json")
-    ade_val_ann_file = os.path.join(data_dir, "ade20k/annotations/predictions_val.json")
-
     places_root = "/data/vision/torralba/ade20k-places/data"
     places_split00_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/predictions/splits/split00.json"
     places_split80_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/predictions/splits/split80.json"
 
     train_dataset = datasets.coco.COCODataset(
-        places_split00_ann_file, places_root,
+        places_root, places_split00_ann_file,
         transform=transforms.Compose([
             transforms.RandomResizedCrop(224, scale=(0.5,1.)),
             transforms.RandomHorizontalFlip(),
@@ -128,7 +123,7 @@ def main():
         ]))
 
     val_dataset = datasets.coco.COCODataset(
-        places_split80_ann_file, places_root,
+        places_root, places_split80_ann_file,
         transform=transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),

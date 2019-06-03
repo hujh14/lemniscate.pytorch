@@ -110,41 +110,33 @@ def main():
 
 
     # Data loading code
-    data_dir = args.data
-    ade_root = os.path.join(data_dir, "ade20k/images")
-    ade_train_ann_file = os.path.join(data_dir, "ade20k/annotations/predictions_train.json")
-    ade_val_ann_file = os.path.join(data_dir, "ade20k/annotations/predictions_val.json")
-
+    cat_name = "car"
     places_root = "/data/vision/torralba/ade20k-places/data"
-    places_split00_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/split00/pred.json"
     places_car_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/predictions/categories/car.json"
 
-    #cat_name = None
-    #places_ann_file = places_split00_ann_file
-    cat_name = "car"
-    places_ann_file = places_car_ann_file
-
     train_dataset = datasets.coco.COCODataset(
-        places_ann_file, places_root,
-        cat_name=cat_name,
+        places_root, places_car_ann_file, 
         transform=transforms.Compose([
             transforms.RandomResizedCrop(224, scale=(0.5,1.)),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
         ]))
 
-    ade_train_dataset = datasets.coco.COCODataset(
-        ade_train_ann_file, ade_root,
-        cat_name=cat_name,
+    # ade20k
+    ade_root = "./data/ade20k/images"
+    ade_train_ann_file = "./data/ade20k/annotations/predictions_train.json"
+    ade_val_ann_file = "./data/ade20k/annotations/predictions_val.json"
+
+    train_dataset_ade = datasets.coco.COCOIOUDataset(
+        ade_root, ade_train_ann_file, cat_name=cat_name,
         transform=transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
         ]))
 
-    ade_val_dataset = datasets.coco.COCODataset(
-        ade_val_ann_file, ade_root,
-        cat_name=cat_name,
+    val_dataset_ade = datasets.coco.COCOIOUDataset(
+        ade_root, ade_val_ann_file, cat_name=cat_name,
         transform=transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
@@ -160,24 +152,24 @@ def main():
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
-    ade_train_loader = torch.utils.data.DataLoader(
-        ade_train_dataset, batch_size=args.batch_size, shuffle=False,
+    train_loader_ade = torch.utils.data.DataLoader(
+        train_dataset_ade, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
     val_loader = torch.utils.data.DataLoader(
-        ade_val_dataset, batch_size=args.batch_size, shuffle=False,
+        val_dataset_ade, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
     # define lemniscate and loss function (criterion)
     ndata = train_dataset.__len__()
-    ndata_ade = ade_train_dataset.__len__()
+    ndata_ade = train_dataset_ade.__len__()
     if args.nce_k > 0:
-        lemniscate_train = NCEAverage(args.low_dim, ndata, args.nce_k, args.nce_t, args.nce_m).cuda()
-        lemniscate_ade_train = NCEAverage(args.low_dim, ndata_ade, args.nce_k, args.nce_t, args.nce_m).cuda()
+        lemniscate = NCEAverage(args.low_dim, ndata, args.nce_k, args.nce_t, args.nce_m).cuda()
+        lemniscate_ade = NCEAverage(args.low_dim, ndata_ade, args.nce_k, args.nce_t, args.nce_m).cuda()
         criterion = NCECriterion(ndata).cuda()
     else:
-        lemniscate_train = LinearAverage(args.low_dim, ndata, args.nce_t, args.nce_m).cuda()
-        lemniscate_ade_train = LinearAverage(args.low_dim, ndata_ade, args.nce_t, args.nce_m).cuda()
+        lemniscate = LinearAverage(args.low_dim, ndata, args.nce_t, args.nce_m).cuda()
+        lemniscate_ade = LinearAverage(args.low_dim, ndata_ade, args.nce_t, args.nce_m).cuda()
         criterion = nn.CrossEntropyLoss().cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
@@ -192,7 +184,8 @@ def main():
             args.start_epoch = checkpoint['epoch']
             best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
-            lemniscate_train = checkpoint['lemniscate']
+            lemniscate = checkpoint['lemniscate']
+            lemniscate_ade = checkpoint['lemniscate_ade']
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
@@ -202,7 +195,7 @@ def main():
     cudnn.benchmark = True
 
     if args.evaluate:
-        kNN(0, model, lemniscate_ade_train, ade_train_loader, val_loader, 200, args.nce_t, recompute_memory=1)
+        kNN(0, model, lemniscate_ade, train_loader_ade, val_loader, 200, args.nce_t, recompute_memory=1)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -211,10 +204,10 @@ def main():
         adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
-        train(train_loader, model, lemniscate_train, criterion, optimizer, epoch)
+        train(train_loader, model, lemniscate, criterion, optimizer, epoch)
 
         # evaluate on validation set
-        prec1 = NN(epoch, model, lemniscate_ade_train, ade_train_loader, val_loader, recompute_memory=1)
+        prec1 = NN(epoch, model, lemniscate_ade, train_loader_ade, val_loader, recompute_memory=1)
 
         # remember best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
@@ -223,12 +216,13 @@ def main():
             'epoch': epoch + 1,
             'arch': args.arch,
             'state_dict': model.state_dict(),
-            'lemniscate': lemniscate_train,
+            'lemniscate': lemniscate,
+            'lemniscate_ade': lemniscate_ade,
             'best_prec1': best_prec1,
             'optimizer' : optimizer.state_dict(),
         }, is_best)
     # evaluate KNN after last epoch
-    kNN(0, model, lemniscate_ade_train, ade_train_loader, val_loader, 200, args.nce_t, recompute_memory=1)
+    kNN(0, model, lemniscate_ade, train_loader_ade, val_loader, 200, args.nce_t, recompute_memory=1)
 
 
 def train(train_loader, model, lemniscate, criterion, optimizer, epoch):

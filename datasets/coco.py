@@ -42,7 +42,7 @@ def has_valid_annotation(anno):
 
 class COCODataset(torchvision.datasets.coco.CocoDetection):
     def __init__(
-        self, ann_file, root, transform=None
+        self, root, ann_file, cat_name=None, transform=None
     ):
         super(COCODataset, self).__init__(root, ann_file)
         # sort indices for reproducible results
@@ -59,7 +59,8 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         self.area_threshold = 1000
         self.score_threshold = 0.5
         self.filter_ids()
-        self.set_targets()
+        if cat_name:
+            self.filter_category(cat_name)
 
     def filter_ids(self):
         # filter bad annotations
@@ -80,6 +81,18 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
             img = self.coco.imgs[img_id]
             if "ade_challenge/images/" in img["file_name"]:
                 img["file_name"] = img["file_name"].replace("ade_challenge/images/", "")
+
+    def filter_category(self, cat_name):
+        ids = []
+        cat_name_to_cat_id = {
+            cat["name"]: cat["id"] for cat in self.coco.dataset["categories"]
+        }
+        cat_id = cat_name_to_cat_id[cat_name]
+        for ann_id in self.ids:
+            ann = self.coco.anns[ann_id]
+            if ann["category_id"] == cat_id:
+                ids.append(ann_id)
+        self.ids = ids
 
     def __getitem__(self, idx):
         ann_id = self.ids[idx]
@@ -121,12 +134,13 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         cat_label = self.json_category_id_to_contiguous_id[ann["category_id"]]
         return cat_label
 
-    def set_targets(self):
-        self.targets = []
+    def get_targets(self):
+        targets = []
         for ann_id in self.ids:
             ann = self.coco.anns[ann_id]
             target = self.prepare_target(ann)
-            self.targets.append(target)
+            targets.append(target)
+        return targets
 
     def get_label(self, target):
         cat_id = self.contiguous_category_id_to_json_id[target]
@@ -190,7 +204,7 @@ if __name__ == '__main__':
     val_ann_file = os.path.join(data_dir, "ade20k/annotations/predictions_val.json")
 
     dataset = COCODataset(
-        val_ann_file, root,
+        root, val_ann_file, 
         transform=transforms.Compose([
             transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
             transforms.RandomHorizontalFlip(),
@@ -198,7 +212,7 @@ if __name__ == '__main__':
         ]))
 
     print("Dataset size:", len(dataset))
-    print(dataset.targets)
+    print(dataset.get_targets())
 
     for inp, target, idx in dataset:
         print("Input shape:", inp.shape)
@@ -213,8 +227,6 @@ if __name__ == '__main__':
 
         image_vis = vis_mask(image, mask)
         image_vis = Image.fromarray(image_vis)
-        if target <= 5:
-            image_vis.show()
-            input("Press Enter to continue...")
-
-
+        
+        image_vis.show()
+        input("Press Enter to continue...")

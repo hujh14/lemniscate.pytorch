@@ -14,8 +14,7 @@ places_car_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/place
 
 def cluster_places():
     places_ann_file = places_split00_ann_file
-    train_dataset = datasets.coco.COCODataset(
-        places_ann_file, places_root)
+    train_dataset = datasets.coco.COCODataset(places_root, places_ann_file)
 
     ckpt = "output/all/model_best.pth.tar"
     checkpoint = torch.load(ckpt, map_location='cpu')
@@ -38,7 +37,7 @@ def cluster_places():
 def cluster_places_car():
     places_ann_file = places_split00_ann_file
     train_dataset = datasets.coco.COCODataset(
-        places_ann_file, places_root)
+        places_root, places_ann_file)
 
     ckpt = "output/all/model_best.pth.tar"
     checkpoint = torch.load(ckpt, map_location='cpu')
