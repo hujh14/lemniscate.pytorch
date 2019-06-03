@@ -57,6 +57,7 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         }
 
         self.area_threshold = 1000
+        self.score_threshold = 0.5
         self.filter_ids()
         self.set_targets()
 
@@ -65,8 +66,13 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         ids = []
         for ann_id in self.ids:
             ann = self.coco.anns[ann_id]
-            if has_valid_annotation([ann]) and ann["area"] > self.area_threshold:
-                ids.append(ann_id)
+            if not has_valid_annotation([ann]):
+                continue
+            if ann["area"] < self.area_threshold:
+                continue
+            if ann["score"] < self.score_threshold:
+                continue
+            ids.append(ann_id)
         self.ids = ids
 
         # correct image path
