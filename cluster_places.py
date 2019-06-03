@@ -37,7 +37,7 @@ def cluster_places_car():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('-d', '--dataset', default='cifar', type=str,
+    parser.add_argument('-d', '--dataset', default='places', type=str,
                     help='dataset to cluster')
     args = parser.parse_args()
     print(args)

@@ -59,7 +59,7 @@ def balance_data(X, y, max_freq=1000):
             counts[l] = 0
         if counts[l] < max_freq:
             counts[l] += 1
-            if l <= 10:
+            if l <= 2:
                 X_bal.append(x)
                 y_bal.append(l)
     X = np.array(X_bal)
@@ -82,7 +82,7 @@ def tsne_clustering(X, label, name="name"):
     df['label'] = label
 
     print(X.shape)
-    tsne = TSNE(n_components=2, verbose=1, perplexity=100, n_iter=300)
+    tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
     tsne_results = tsne.fit_transform(X)
     df['tsne-one'] = tsne_results[:,0]
     df['tsne-two'] = tsne_results[:,1]
