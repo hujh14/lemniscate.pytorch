@@ -2,7 +2,7 @@ import os
 import argparse
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as pltp
+import matplotlib.pyplot as plt
 import seaborn as sns
 
 from sklearn.datasets import fetch_openml
@@ -10,19 +10,43 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from umap import UMAP
 
+import torch
+import torchvision.datasets as datasets
 
 def cluster_mnist():
     X, y = fetch_openml('mnist_784', version=1, return_X_y=True)
     print(X.shape, y.shape)
 
-    # pca_clustering(X, y)
-    # tsne_clustering(X, y)
-    umap_clustering(X, y)
+    pca_clustering(X, y)
+    tsne_clustering(X, y)
+    # umap_clustering(X, y)
 
-def cluster_lemniscate():
-    checkpoint = torch.load(args.resume, map_location='cpu')
+def cluster_cifar():
+    cifar_checkpoint = "checkpoint/ckpt.t7"
+    checkpoint = torch.load(cifar_checkpoint, map_location='cpu')
     lemniscate = checkpoint['lemniscate']
-    
+    trainset = datasets.CIFAR10(root='./data/cifar', train=True, download=True, transform=None)
+
+    X = lemniscate.memory.numpy()
+    y = np.array(trainset.targets)
+    print(X.shape, y.shape)
+
+    pca_clustering(X, y, name="cifar")
+    tsne_clustering(X, y, name="cifar")
+
+def cluster_imagenet():
+    imagenet_checkpoint = "checkpoint/lemniscate_resnet18.pth.tar"
+    checkpoint = torch.load(imagenet_checkpoint, map_location='cpu')
+    lemniscate = checkpoint['lemniscate']
+    train_dataset = datasets.ImageNet(root='./data/imagenet', split='train', download=False)
+
+    X = lemniscate.memory.numpy()
+    y = np.array(train_dataset.targets)
+    print(X.shape, y.shape)
+
+    pca_clustering(X, y, name="imagenet")
+    tsne_clustering(X, y, name="imagenet")
+
 def umap_clustering(X, y):
     print("UMAP clustering...")
     df = pd.DataFrame(X)
@@ -40,7 +64,7 @@ def umap_clustering(X, y):
 
     plot_scatter(df, x="umap-one", y="umap-two")
 
-def tsne_clustering(X, y):
+def tsne_clustering(X, y, name="name"):
     print("TSNE clustering...")
     df = pd.DataFrame(X)
     df['y'] = y
@@ -55,9 +79,9 @@ def tsne_clustering(X, y):
     df['tsne-one'] = tsne_results[:,0]
     df['tsne-two'] = tsne_results[:,1]
 
-    plot_scatter(df, x="tsne-one", y="tsne-two")
+    plot_scatter(df, x="tsne-one", y="tsne-two", fn="{}_tsne_scatter.png".format(name))
 
-def pca_clustering(X, y):
+def pca_clustering(X, y, name="name"):
     print("PCA clustering...")
     df = pd.DataFrame(X)
     df['y'] = y
@@ -68,11 +92,13 @@ def pca_clustering(X, y):
     df['pca-two'] = pca_result[:,1] 
     df['pca-three'] = pca_result[:,2]
 
-    plot_scatter(df, x="pca-one", y="pca-two")
+    plot_scatter(df, x="pca-one", y="pca-two", fn="{}_pca_scatter.png".format(name))
 
 def plot_scatter(df, x, y, fn="scatter.png"):
     print("Plotting scatter...")
     C = len(np.unique(df['y']))
+
+    plt.figure()
     scatter_plot = sns.scatterplot(
         x=x, y=y,
         hue="y",
@@ -82,10 +108,14 @@ def plot_scatter(df, x, y, fn="scatter.png"):
         alpha=0.3
     )
 
-    fig = scatter_plot.get_figure()
-    fig.savefig(fn)
+    plots_dir = "./plots"
+    if not os.path.exists(plots_dir):
+        os.makedirs(plots_dir)
+    plt.savefig(os.path.join(plots_dir, fn))
 
 
 if __name__ == '__main__':
-    cluster_mnist()
+    # cluster_mnist()
+    # cluster_cifar()
+    cluster_imagenet()
 

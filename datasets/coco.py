@@ -64,7 +64,7 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         self.area_threshold = 1000
         self.compute_ious()
         self.filter_ids()
-        self.set_train_labels()
+        self.set_targets()
 
     def compute_ious(self):
         print("Computing ious...")
@@ -111,12 +111,12 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
             if "ade_challenge/images/" in img["file_name"]:
                 img["file_name"] = img["file_name"].replace("ade_challenge/images/", "")
 
-    def set_train_labels(self):
-        self.train_labels = []
+    def set_targets(self):
+        self.targets = []
         for ann_id in self.ids:
             ann = self.coco.anns[ann_id]
             target = self.prepare_target(ann)
-            self.train_labels.append(target)
+            self.targets.append(target)
 
     def __getitem__(self, idx):
         ann_id = self.ids[idx]
