@@ -10,6 +10,7 @@ import random
 import numpy as np
 
 import pycocotools.mask as mask_utils
+from .annotator_sim import SimulatedAnnotator
 
 min_keypoints_per_image = 10
 
@@ -40,9 +41,9 @@ def has_valid_annotation(anno):
     return False
 
 
-class COCODataset(torchvision.datasets.coco.CocoDetection):
+class COCOIOUDataset(torchvision.datasets.coco.CocoDetection):
     def __init__(
-        self, ann_file, root, transform=None
+        self, ann_file, root, cat_name=None, transform=None
     ):
         super(COCODataset, self).__init__(root, ann_file)
         # sort indices for reproducible results
@@ -55,10 +56,27 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         self.contiguous_category_id_to_json_id = {
             v: k for k, v in self.json_category_id_to_contiguous_id.items()
         }
+        self.category_name_to_category_id = {
+            cat["name"]: cat["id"] for cat in self.coco.dataset["categories"]
+        }
 
+        self.cat_name = cat_name
         self.area_threshold = 1000
+        self.compute_ious()
         self.filter_ids()
         self.set_targets()
+
+    def compute_ious(self):
+        print("Computing ious...")
+        annotator = SimulatedAnnotator()
+        ids = []
+        for ann_id in self.ids:
+            ann = self.coco.anns[ann_id]
+            ann["iou"] = annotator.compute_iou(self.coco, ann)
+            if ann["iou"] != 0:
+                ids.append(ann_id)
+        self.ids = ids
+        print("Done")
 
     def filter_ids(self):
         # filter bad annotations
@@ -69,11 +87,36 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
                 ids.append(ann_id)
         self.ids = ids
 
+        # filter category
+        if self.cat_name != None:
+            ids = []
+            cat_id = self.category_name_to_category_id[self.cat_name]
+            for ann_id in self.ids:
+                ann = self.coco.anns[ann_id]
+                if ann["category_id"] == cat_id:
+                    ids.append(ann_id)
+            self.ids = ids
+
+        # filter zero ious
+        ids = []
+        for ann_id in self.ids:
+            ann = self.coco.anns[ann_id]
+            if ann["iou"] != 0:
+                ids.append(ann_id)
+        self.ids = ids
+
         # correct image path
         for img_id in self.coco.imgs:
             img = self.coco.imgs[img_id]
             if "ade_challenge/images/" in img["file_name"]:
                 img["file_name"] = img["file_name"].replace("ade_challenge/images/", "")
+
+    def set_targets(self):
+        self.targets = []
+        for ann_id in self.ids:
+            ann = self.coco.anns[ann_id]
+            target = self.prepare_target(ann)
+            self.targets.append(target)
 
     def __getitem__(self, idx):
         ann_id = self.ids[idx]
@@ -83,9 +126,6 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         input = self.prepare_input(img, ann)
         target = self.prepare_target(ann)
         return input, target, idx
-
-    def __len__(self):
-        return len(self.ids)
 
     def prepare_input(self, img, ann):
         image = cv2.imread(os.path.join(self.root, img["file_name"]))[:,:,::-1]
@@ -109,15 +149,17 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         return image
 
     def prepare_target(self, ann):
-        cat_label = self.json_category_id_to_contiguous_id[ann["category_id"]]
-        return cat_label
+        if self.cat_name == None:
+            cat_label = self.json_category_id_to_contiguous_id[ann["category_id"]]
+            return cat_label
 
-    def set_targets(self):
-        self.targets = []
-        for ann_id in self.ids:
-            ann = self.coco.anns[ann_id]
-            target = self.prepare_target(ann)
-            self.targets.append(target)
+        iou_bin = 0
+        if ann["iou"] != None:
+            iou_bin = int(ann["iou"]*10) + 1
+        return iou_bin
+
+    def __len__(self):
+        return len(self.ids)
 
     def get_img_info(self, idx):
         ann_id = self.ids[idx]
@@ -130,7 +172,7 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
         cat = self.coco.cats[cat_id]
         return cat
 
-def crop_square(image, bbox, margin=1.5, crop_size=256):
+def crop_square(image, bbox, margin=2, crop_size=256):
     x, y, w, h = bbox
     x_c = x + w/2
     y_c = y + h/2
@@ -171,6 +213,7 @@ if __name__ == '__main__':
 
     dataset = COCODataset(
         val_ann_file, root,
+        cat_name="car",
         transform=transforms.Compose([
             transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
             transforms.RandomHorizontalFlip(),
@@ -178,7 +221,7 @@ if __name__ == '__main__':
         ]))
 
     print("Dataset size:", len(dataset))
-    print(dataset.targets)
+    print(dataset.train_labels)
 
     for inp, target, idx in dataset:
         print("Input shape:", inp.shape)
