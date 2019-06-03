@@ -47,6 +47,29 @@ def cluster_imagenet():
     pca_clustering(X, y, name="imagenet")
     tsne_clustering(X, y, name="imagenet")
 
+def cluster_places():
+    places_root = "/data/vision/torralba/ade20k-places/data"
+    places_split00_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/split00/pred.json"
+    places_car_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/predictions/categories/car.json"
+
+    places_ann_file = places_split00_ann_file
+    cat_name = None
+    train_dataset = datasets.coco.COCODataset(
+        places_ann_file, places_root,
+        cat_name=cat_name
+        )
+
+    ckpt = "output/all_objects/model_best.pth.tar"
+    checkpoint = torch.load(ckpt, map_location='cpu')
+    lemniscate = checkpoint['lemniscate']
+
+    X = lemniscate.memory.numpy()
+    y = np.array(train_dataset.targets)
+    print(X.shape, y.shape)
+
+    pca_clustering(X, y, name="places")
+    tsne_clustering(X, y, name="places")
+
 def umap_clustering(X, y):
     print("UMAP clustering...")
     df = pd.DataFrame(X)
@@ -115,7 +138,18 @@ def plot_scatter(df, x, y, fn="scatter.png"):
 
 
 if __name__ == '__main__':
-    # cluster_mnist()
-    # cluster_cifar()
-    cluster_imagenet()
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--dataset', default='cifar', type=str,
+                    help='dataset to cluster')
+    args = parser.parse_args()
+    print(args)
+
+    if args.dataset == "mnist":
+        cluster_mnist()
+    elif args.dataset == "cifar":
+        cluster_cifar()
+    elif args.dataset == "imagenet":
+        cluster_imagenet()
+    elif args.dataset == "places":
+        cluster_places()
 
