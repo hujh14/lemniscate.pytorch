@@ -15,24 +15,42 @@ places_car_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/place
 def cluster_places():
     places_ann_file = places_split00_ann_file
     train_dataset = datasets.coco.COCODataset(
-        places_ann_file, places_root, cat_name=None)
+        places_ann_file, places_root)
 
-    ckpt = "output/all_objects/model_best.pth.tar"
+    ckpt = "output/all/model_best.pth.tar"
     checkpoint = torch.load(ckpt, map_location='cpu')
     lemniscate = checkpoint['lemniscate']
 
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
-    X, y = balance_data(X, y)
-    print(X.shape, y.shape)
+    X, y = balance_categories(X, y)
+    X, y = filter_categories(X, y, range(10))
     label = np.array([train_dataset.get_cat_info(i)["name"] for i in y])
 
+    print(X.shape, label.shape)
     pca_clustering(X, label, name="places")
     tsne_clustering(X, label, name="places")
+    nearest_neighbors(train_dataset, X, n=5, name="places")
 
 def cluster_places_car():
+    places_ann_file = places_split00_ann_file
     train_dataset = datasets.coco.COCODataset(
-        places_ann_file, places_root, cat_name="car")
+        places_ann_file, places_root)
+
+    ckpt = "output/all/model_best.pth.tar"
+    checkpoint = torch.load(ckpt, map_location='cpu')
+    lemniscate = checkpoint['lemniscate']
+
+    X = lemniscate.memory.numpy()
+    y = np.array(train_dataset.targets)
+    X, y = balance_categories(X, y)
+    X, y = filter_categories(X, y, [9])
+    label = np.array([train_dataset.get_cat_info(i)["name"] for i in y])
+
+    print(X.shape, label.shape)
+    pca_clustering(X, label, name="places")
+    tsne_clustering(X, label, name="places")
+    nearest_neighbors(train_dataset, X, n=5, name="places")
 
 
 if __name__ == '__main__':
@@ -42,4 +60,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    cluster_places()
+    if args.dataset == "places":
+        cluster_places()
+    elif args.dataset == "places_car":
+        cluster_places_car()

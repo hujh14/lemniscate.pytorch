@@ -8,3 +8,4 @@ plots/*
 *.log
 *.tar
 *.pth
+.DS_Store
