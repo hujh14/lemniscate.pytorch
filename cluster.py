@@ -79,7 +79,11 @@ def balance_categories(X, y, idxs, max_freq=1000):
     X_out = []
     y_out = []
     idxs_out = []
-    for x, l, i in zip(X, y, idxs):
+    
+    zipped = [(x,l,i) for x,l,i in zip(X, y, idxs)]
+    random.seed(42)
+    random.shuffle(zipped)
+    for x,l,i in zipped:
         if l not in counts:
             counts[l] = 0
         if counts[l] < max_freq:

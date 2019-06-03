@@ -25,7 +25,7 @@ def cluster_places():
     y = np.array(train_dataset.targets)
     idxs = np.arange(len(train_dataset))
     X, y, idxs = balance_categories(X, y, idxs)
-    X, y, idxs = filter_categories(X, y, idxs, np.arange(10))
+    X, y, idxs = filter_categories(X, y, idxs, np.arange(11))
     label = np.array([train_dataset.get_cat_info(i)["name"] for i in y])
 
     print(X.shape, label.shape)
