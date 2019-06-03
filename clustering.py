@@ -11,7 +11,7 @@ from sklearn.manifold import TSNE
 from umap import UMAP
 
 import torch
-import torchvision.datasets as datasets
+import datasets
 
 def cluster_mnist():
     X, y = fetch_openml('mnist_784', version=1, return_X_y=True)
@@ -25,7 +25,7 @@ def cluster_cifar():
     cifar_checkpoint = "checkpoint/ckpt.t7"
     checkpoint = torch.load(cifar_checkpoint, map_location='cpu')
     lemniscate = checkpoint['lemniscate']
-    trainset = datasets.CIFAR10(root='./data/cifar', train=True, download=True, transform=None)
+    trainset = datasets.CIFAR10Instance(root='./data/cifar', train=True, download=True, transform=None)
 
     X = lemniscate.memory.numpy()
     y = np.array(trainset.targets)
@@ -38,7 +38,7 @@ def cluster_imagenet():
     imagenet_checkpoint = "checkpoint/lemniscate_resnet18.pth.tar"
     checkpoint = torch.load(imagenet_checkpoint, map_location='cpu')
     lemniscate = checkpoint['lemniscate']
-    train_dataset = datasets.ImageNet(root='./data/imagenet', split='train', download=False)
+    train_dataset = datasets.ImageFolderInstance("./data/imagenet/train")
 
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
