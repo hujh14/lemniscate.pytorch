@@ -112,6 +112,9 @@ class COCODataset(torchvision.datasets.coco.CocoDetection):
             random.seed(seed)
             mask = self.transform(mask)
             image = torch.cat([image, mask])
+        else:
+            image = vis_mask(image, mask)
+            image = Image.fromarray(image)
         return image
 
     def prepare_target(self, ann):
