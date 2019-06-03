@@ -1,5 +1,6 @@
 import os
 import argparse
+import random
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,7 +9,6 @@ import seaborn as sns
 from sklearn.datasets import fetch_openml
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from umap import UMAP
 
 import torch
 import datasets
@@ -19,7 +19,6 @@ def cluster_mnist():
 
     pca_clustering(X, y)
     tsne_clustering(X, y)
-    # umap_clustering(X, y)
 
 def cluster_cifar():
     cifar_checkpoint = "checkpoint/ckpt.t7"
@@ -29,6 +28,7 @@ def cluster_cifar():
 
     X = lemniscate.memory.numpy()
     y = np.array(trainset.targets)
+    X, y = cap_frequency(X, y, max_freq=1000)
     print(X.shape, y.shape)
 
     pca_clustering(X, y, name="cifar")
@@ -42,6 +42,7 @@ def cluster_imagenet():
 
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
+    X, y = cap_frequency(X, y, max_freq=1000)
     print(X.shape, y.shape)
 
     pca_clustering(X, y, name="imagenet")
@@ -49,15 +50,9 @@ def cluster_imagenet():
 
 def cluster_places():
     places_root = "/data/vision/torralba/ade20k-places/data"
-    places_split00_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/split00/pred.json"
-    places_car_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/predictions/categories/car.json"
-
-    places_ann_file = places_split00_ann_file
-    cat_name = None
+    places_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/split00/pred.json"
     train_dataset = datasets.coco.COCODataset(
-        places_ann_file, places_root,
-        cat_name=cat_name
-        )
+        places_ann_file, places_root, cat_name=None)
 
     ckpt = "output/all_objects/model_best.pth.tar"
     checkpoint = torch.load(ckpt, map_location='cpu')
@@ -65,27 +60,32 @@ def cluster_places():
 
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
+    X, y = cap_frequency(X, y, max_freq=1000)
     print(X.shape, y.shape)
 
     pca_clustering(X, y, name="places")
     tsne_clustering(X, y, name="places")
 
-def umap_clustering(X, y):
-    print("UMAP clustering...")
-    df = pd.DataFrame(X)
-    df['y'] = y
+def cluster_places_car():
+    places_root = "/data/vision/torralba/ade20k-places/data"
+    places_car_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/predictions/categories/car.json"
+    train_dataset = datasets.coco.COCODataset(
+        places_ann_file, places_root, cat_name="car")
 
-    N = 100
-    np.random.seed(42)
-    rndperm = np.random.permutation(df.shape[0])
-    df = df.loc[rndperm[:N],:].copy()
-
-    umap = UMAP(random_state=42)
-    umap_result = umap.fit_transform(X)
-    df['umap-one'] = umap_result[:,0]
-    df['umap-two'] = umap_result[:,1]
-
-    plot_scatter(df, x="umap-one", y="umap-two")
+def cap_frequency(X, y, max_freq=1000):
+    counts = {}
+    X_bal = []
+    y_bal = []
+    for x, l in zip(X, y):
+        if l not in counts:
+            counts[l] = 0
+        if counts[l] < max_freq:
+            X_bal.append(x)
+            y_bal.append(l)
+            counts[l] += 1
+    X = np.array(X_bal)
+    y = np.array(y_bal)
+    return X, y
 
 def tsne_clustering(X, y, name="name"):
     print("TSNE clustering...")
@@ -117,6 +117,24 @@ def pca_clustering(X, y, name="name"):
 
     plot_scatter(df, x="pca-one", y="pca-two", fn="{}_pca_scatter.png".format(name))
 
+def umap_clustering(X, y):
+    #from umap import UMAP
+    print("UMAP clustering...")
+    df = pd.DataFrame(X)
+    df['y'] = y
+
+    N = 100
+    np.random.seed(42)
+    rndperm = np.random.permutation(df.shape[0])
+    df = df.loc[rndperm[:N],:].copy()
+
+    umap = UMAP(random_state=42)
+    umap_result = umap.fit_transform(X)
+    df['umap-one'] = umap_result[:,0]
+    df['umap-two'] = umap_result[:,1]
+
+    plot_scatter(df, x="umap-one", y="umap-two")
+
 def plot_scatter(df, x, y, fn="scatter.png"):
     print("Plotting scatter...")
     C = len(np.unique(df['y']))
@@ -125,7 +143,7 @@ def plot_scatter(df, x, y, fn="scatter.png"):
     scatter_plot = sns.scatterplot(
         x=x, y=y,
         hue="y",
-        palette=sns.color_palette("hls", C),
+        palette=sns.color_palette(n_colors=C),
         data=df,
         legend="full",
         alpha=0.3
@@ -139,7 +157,7 @@ def plot_scatter(df, x, y, fn="scatter.png"):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--dataset', default='cifar', type=str,
+    parser.add_argument('-d', '--dataset', default='cifar', type=str,
                     help='dataset to cluster')
     args = parser.parse_args()
     print(args)
