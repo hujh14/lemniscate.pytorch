@@ -127,7 +127,7 @@ def main():
     ade_train_ann_file = "./data/ade20k/annotations/predictions_train.json"
     ade_val_ann_file = "./data/ade20k/annotations/predictions_val.json"
 
-    train_dataset_ade = datasets.coco.COCOIOUDataset(
+    train_dataset_ade = datasets.coco_iou.COCOIOUDataset(
         ade_root, ade_train_ann_file, cat_name=cat_name,
         transform=transforms.Compose([
             transforms.Resize(256),
@@ -135,7 +135,7 @@ def main():
             transforms.ToTensor(),
         ]))
 
-    val_dataset_ade = datasets.coco.COCOIOUDataset(
+    val_dataset_ade = datasets.coco_iou.COCOIOUDataset(
         ade_root, ade_val_ann_file, cat_name=cat_name,
         transform=transforms.Compose([
             transforms.Resize(256),

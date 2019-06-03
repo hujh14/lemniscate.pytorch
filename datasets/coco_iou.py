@@ -14,7 +14,7 @@ from annotator_sim import SimulatedAnnotator
 
 class COCOIOUDataset(COCODataset):
     def __init__(
-        self, ann_file, root, cat_name=None, transform=None
+        self, root, ann_file, cat_name=None, transform=None
     ):
         super(COCOIOUDataset, self).__init__(root, ann_file, cat_name=cat_name, transform=transform)
         self.compute_ious()
