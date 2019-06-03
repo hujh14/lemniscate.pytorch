@@ -26,11 +26,13 @@ def cluster_places():
     idxs = np.arange(len(train_dataset))
     X, y, idxs = balance_categories(X, y, idxs, max_freq=10000)
     X, y, idxs = filter_categories(X, y, idxs, [4])
-    label = np.array([train_dataset.get_target_label(i) for i in y])
 
-    print(X.shape, label.shape)
-    pca_clustering(X, label, name="places")
-    tsne_clustering(X, label, name="places")
+    print(X.shape, y.shape)
+    label = np.array([train_dataset.get_label(i) for i in y])
+    score = np.array([int(train_dataset.get_ann_info(i)["score"]*10) for i in idxs])
+    pca_clustering(X, score, name="places")
+    tsne_clustering(X, score, name="places")
+
     nearest_neighbors(X, idxs, train_dataset, name="places")
 
 def cluster_places_car():
