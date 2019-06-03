@@ -15,8 +15,8 @@ import datasets
 
 def cluster_mnist():
     X, y = fetch_openml('mnist_784', version=1, return_X_y=True)
-    print(X.shape, y.shape)
 
+    print(X.shape, y.shape)
     pca_clustering(X, y)
     tsne_clustering(X, y)
 
@@ -28,9 +28,9 @@ def cluster_cifar():
 
     X = lemniscate.memory.numpy()
     y = np.array(trainset.targets)
-    X, y = cap_frequency(X, y, max_freq=1000)
-    print(X.shape, y.shape)
+    X, y = balance_data(X, y)
 
+    print(X.shape, y.shape)
     pca_clustering(X, y, name="cifar")
     tsne_clustering(X, y, name="cifar")
 
@@ -42,37 +42,13 @@ def cluster_imagenet():
 
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
-    X, y = cap_frequency(X, y, max_freq=1000)
-    print(X.shape, y.shape)
+    X, y = balance_data(X, y)
 
+    print(X.shape, y.shape)
     pca_clustering(X, y, name="imagenet")
     tsne_clustering(X, y, name="imagenet")
 
-def cluster_places():
-    places_root = "/data/vision/torralba/ade20k-places/data"
-    places_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/split00/pred.json"
-    train_dataset = datasets.coco.COCODataset(
-        places_ann_file, places_root, cat_name=None)
-
-    ckpt = "output/all_objects/model_best.pth.tar"
-    checkpoint = torch.load(ckpt, map_location='cpu')
-    lemniscate = checkpoint['lemniscate']
-
-    X = lemniscate.memory.numpy()
-    y = np.array(train_dataset.targets)
-    X, y = cap_frequency(X, y, max_freq=1000)
-    print(X.shape, y.shape)
-
-    pca_clustering(X, y, name="places")
-    tsne_clustering(X, y, name="places")
-
-def cluster_places_car():
-    places_root = "/data/vision/torralba/ade20k-places/data"
-    places_car_ann_file = "/data/vision/torralba/ade20k-places/data/annotation/places_challenge/train_files/iteration0/predictions/categories/car.json"
-    train_dataset = datasets.coco.COCODataset(
-        places_ann_file, places_root, cat_name="car")
-
-def cap_frequency(X, y, max_freq=1000):
+def balance_data(X, y, max_freq=1000):
     counts = {}
     X_bal = []
     y_bal = []
@@ -80,9 +56,10 @@ def cap_frequency(X, y, max_freq=1000):
         if l not in counts:
             counts[l] = 0
         if counts[l] < max_freq:
-            X_bal.append(x)
-            y_bal.append(l)
             counts[l] += 1
+            if l <= 10:
+                X_bal.append(x)
+                y_bal.append(l)
     X = np.array(X_bal)
     y = np.array(y_bal)
     return X, y
@@ -168,6 +145,4 @@ if __name__ == '__main__':
         cluster_cifar()
     elif args.dataset == "imagenet":
         cluster_imagenet()
-    elif args.dataset == "places":
-        cluster_places()
 
