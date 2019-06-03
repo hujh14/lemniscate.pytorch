@@ -29,10 +29,11 @@ def cluster_cifar():
     X = lemniscate.memory.numpy()
     y = np.array(trainset.targets)
     X, y = balance_data(X, y)
+    label = np.array([trainset.classes[i] for i in y])
 
-    print(X.shape, y.shape)
-    pca_clustering(X, y, name="cifar")
-    tsne_clustering(X, y, name="cifar")
+    print(X.shape, label.shape)
+    pca_clustering(X, label, name="cifar")
+    tsne_clustering(X, label, name="cifar")
 
 def cluster_imagenet():
     imagenet_checkpoint = "checkpoint/lemniscate_resnet18.pth.tar"
@@ -43,10 +44,11 @@ def cluster_imagenet():
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
     X, y = balance_data(X, y)
+    label = np.array([train_dataset.classes[i] for i in y])
 
-    print(X.shape, y.shape)
-    pca_clustering(X, y, name="imagenet")
-    tsne_clustering(X, y, name="imagenet")
+    print(X.shape, label.shape)
+    pca_clustering(X, label, name="imagenet")
+    tsne_clustering(X, label, name="imagenet")
 
 def balance_data(X, y, max_freq=1000):
     counts = {}
@@ -64,33 +66,39 @@ def balance_data(X, y, max_freq=1000):
     y = np.array(y_bal)
     return X, y
 
-def tsne_clustering(X, y, name="name"):
+def tsne_clustering(X, label, name="name"):
     print("TSNE clustering...")
     df = pd.DataFrame(X)
-    df['y'] = y
+    df['label'] = label
 
     N = 10000
     np.random.seed(42)
     rndperm = np.random.permutation(df.shape[0])
     df = df.loc[rndperm[:N],:].copy()
 
-    tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
-    tsne_results = tsne.fit_transform(df.to_numpy())
+    label = df['label']
+    df = df.drop('label', axis=1)
+    X = df.values
+    df['label'] = label
+
+    print(X.shape)
+    tsne = TSNE(n_components=2, verbose=1, perplexity=100, n_iter=300)
+    tsne_results = tsne.fit_transform(X)
     df['tsne-one'] = tsne_results[:,0]
     df['tsne-two'] = tsne_results[:,1]
 
     plot_scatter(df, x="tsne-one", y="tsne-two", fn="{}_tsne_scatter.png".format(name))
 
-def pca_clustering(X, y, name="name"):
+def pca_clustering(X, label, name="name"):
     print("PCA clustering...")
     df = pd.DataFrame(X)
-    df['y'] = y
 
     pca = PCA(n_components=3)
     pca_result = pca.fit_transform(X)
     df['pca-one'] = pca_result[:,0]
     df['pca-two'] = pca_result[:,1] 
     df['pca-three'] = pca_result[:,2]
+    df['label'] = label
 
     plot_scatter(df, x="pca-one", y="pca-two", fn="{}_pca_scatter.png".format(name))
 
@@ -98,7 +106,6 @@ def umap_clustering(X, y):
     #from umap import UMAP
     print("UMAP clustering...")
     df = pd.DataFrame(X)
-    df['y'] = y
 
     N = 100
     np.random.seed(42)
@@ -109,17 +116,18 @@ def umap_clustering(X, y):
     umap_result = umap.fit_transform(X)
     df['umap-one'] = umap_result[:,0]
     df['umap-two'] = umap_result[:,1]
+    df['label'] = label
 
     plot_scatter(df, x="umap-one", y="umap-two")
 
 def plot_scatter(df, x, y, fn="scatter.png"):
     print("Plotting scatter...")
-    C = len(np.unique(df['y']))
+    C = len(np.unique(df['label']))
 
     plt.figure()
     scatter_plot = sns.scatterplot(
         x=x, y=y,
-        hue="y",
+        hue="label",
         palette=sns.color_palette(n_colors=C),
         data=df,
         legend="full",
