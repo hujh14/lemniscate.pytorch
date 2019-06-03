@@ -23,14 +23,15 @@ def cluster_places():
 
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
-    X, y = balance_categories(X, y)
-    X, y = filter_categories(X, y, range(10))
+    idxs = np.arange(len(train_dataset))
+    X, y, idxs = balance_categories(X, y, idxs)
+    X, y, idxs = filter_categories(X, y, idxs, np.arange(10))
     label = np.array([train_dataset.get_cat_info(i)["name"] for i in y])
 
     print(X.shape, label.shape)
     pca_clustering(X, label, name="places")
     tsne_clustering(X, label, name="places")
-    nearest_neighbors(train_dataset, X, name="places")
+    nearest_neighbors(X, idxs, train_dataset, name="places")
 
 def cluster_places_car():
     places_ann_file = places_split00_ann_file

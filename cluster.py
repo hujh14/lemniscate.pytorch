@@ -31,13 +31,15 @@ def cluster_cifar():
 
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
-    X, y = balance_categories(X, y)
+    idxs = np.arange(len(train_dataset))
+    X, y, idxs = balance_categories(X, y, idxs)
+    X, y, idxs = filter_categories(X, y, idxs, np.arange(10))
     label = np.array([train_dataset.classes[i] for i in y])
 
     print(X.shape, label.shape)
     pca_clustering(X, label, name="cifar")
     tsne_clustering(X, label, name="cifar")
-    nearest_neighbors(train_dataset, X, name="cifar")
+    nearest_neighbors(X, idxs, train_dataset, name="cifar")
 
 def cluster_imagenet():
     imagenet_checkpoint = "checkpoint/lemniscate_resnet18.pth.tar"
@@ -47,56 +49,63 @@ def cluster_imagenet():
 
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
-    X, y = balance_categories(X, y)
-    X, y = filter_categories(X, y, range(10))
+    idxs = np.arange(len(train_dataset))
+    X, y, idxs = balance_categories(X, y, idxs)
+    X, y, idxs = filter_categories(X, y, idxs, np.arange(10))
     label = np.array([train_dataset.classes[i] for i in y])
 
     print(X.shape, label.shape)
     pca_clustering(X, label, name="imagenet")
     tsne_clustering(X, label, name="imagenet")
-    nearest_neighbors(train_dataset, X, name="imagenet")
+    nearest_neighbors(X, idxs, train_dataset, name="imagenet")
 
-def filter_categories(X, y, cats):
+def filter_categories(X, y, idxs, cats):
     X_out = []
     y_out = []
-    for x, l in zip(X, y):
+    idxs_out = []
+    for x, l, i in zip(X, y, idxs):
         if l in cats:
             X_out.append(x)
             y_out.append(l)
+            idxs_out.append(i)
     X_out = np.array(X_out)
     y_out = np.array(y_out)
-    print("Filtered categories {}: {}, {} -> {}, {}".format(cats, X.shape, y.shape, X_out.shape, y_out.shape))
-    return X_out, y_out
+    idxs_out = np.array(idxs_out)
+    print("Filtered categories {}: {} -> {}".format(cats, X.shape, X_out.shape))
+    return X_out, y_out, idxs_out
 
-def balance_categories(X, y, max_freq=1000):
+def balance_categories(X, y, idxs, max_freq=1000):
     counts = {}
     X_out = []
     y_out = []
-    for x, l in zip(X, y):
+    idxs_out = []
+    for x, l, i in zip(X, y, idxs):
         if l not in counts:
             counts[l] = 0
         if counts[l] < max_freq:
             counts[l] += 1
             X_out.append(x)
             y_out.append(l)
+            idxs_out.append(i)
     X_out = np.array(X_out)
     y_out = np.array(y_out)
-    print("Balanced categories {}: {}, {} -> {}, {}".format(max_freq, X.shape, y.shape, X_out.shape, y_out.shape))
-    return X_out, y_out
+    idxs_out = np.array(idxs_out)
+    print("Balanced categories {}: {} -> {}".format(max_freq, X.shape, X_out.shape))
+    return X_out, y_out, idxs_out
 
-def nearest_neighbors(dataset, X, n=5, name="name"):
-    print("Getting nearest neighbors...")
+def nearest_neighbors(X, idxs, dataset, n=5, name="name"):
+    print("Getting nearest neighbors...", X.shape, idxs.shape)
     start = time.time()
 
     nbrs = NearestNeighbors(n_neighbors=n+1, algorithm='ball_tree').fit(X)
     distances, indices = nbrs.kneighbors(X)
     grid_imgs = []
     grid_targets = []
-    for row in indices[:30]:
+    for neighbors in indices[:30]:
         imgs = []
         targets = []
-        for idx in row:
-            img, target, index = dataset[idx]
+        for i in neighbors:
+            img, target, _ = dataset[idxs[i]]
             imgs.append(img)
             targets.append(target)
 
@@ -114,23 +123,21 @@ def nearest_neighbors(dataset, X, n=5, name="name"):
     print("Done. {:0.2f} secs".format(time.time() - start))
 
 def tsne_clustering(X, label, name="name"):
-    print("TSNE clustering...")
+    print("TSNE clustering...", X.shape, label.shape)
     start = time.time()
 
     df = pd.DataFrame(X)
     df['label'] = label
-
-    N = 10000
+    # TSNE cannot handle too many samples
+    N = 9999
     np.random.seed(42)
     rndperm = np.random.permutation(df.shape[0])
     df = df.loc[rndperm[:N],:].copy()
-
+    X = df.values[:,:128]
     label = df['label']
-    df = df.drop('label', axis=1)
-    X = df.values
-    df['label'] = label
-
+    print("Downsampled to", X.shape, label.shape)
     assert X.shape[1] == 128
+
     tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=300)
     tsne_results = tsne.fit_transform(X)
     df['tsne-one'] = tsne_results[:,0]
@@ -140,7 +147,7 @@ def tsne_clustering(X, label, name="name"):
     print("Done. {:0.2f} secs".format(time.time() - start))
 
 def pca_clustering(X, label, name="name"):
-    print("PCA clustering...")
+    print("PCA clustering...", X.shape, label.shape)
     start = time.time()
 
     df = pd.DataFrame(X)
