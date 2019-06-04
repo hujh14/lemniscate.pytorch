@@ -47,30 +47,29 @@ def cluster_places_car():
     train_dataset_ade = datasets.coco_iou.COCOIOUDataset(
         ade_root, ade_train_ann_file, cat_name="car")
 
-    ckpt = "output/car_new/model_best.pth.tar"
+    ckpt = "output/car_new/checkpoint.pth.tar"
     checkpoint = torch.load(ckpt, map_location='cpu')
     lemniscate = checkpoint['lemniscate']
     lemniscate_ade = checkpoint['lemniscate_ade']
 
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
-    X, y = balance_categories(X, y)
-    X, y = filter_categories(X, y, [9])
+    idxs = np.arange(len(train_dataset))
     label = np.array([train_dataset.get_label(i) for i in y])
+    X, y, idxs = balance_categories(X, y, idxs, max_freq=10000)
 
     X_ade = lemniscate_ade.memory.numpy()
     y_ade = np.array(train_dataset_ade.targets)
+    idxs_ade = np.arange(len(train_dataset_ade))
     label_ade = np.array([train_dataset_ade.get_label(i) for i in y_ade])
 
+    # Combine places and ade
     X = np.concantenate([X, X_ade], axis=0)
     label = np.concantenate([label, label_ade], axis=0)
 
     print(X.shape, label.shape)
     pca_clustering(X, label, name="places_car")
     tsne_clustering(X, label, name="places_car")
-    # nearest_neighbors(train_dataset, X, name="places_car")
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
