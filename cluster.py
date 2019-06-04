@@ -23,41 +23,48 @@ def cluster_mnist():
     pca_clustering(X, y)
     tsne_clustering(X, y)
 
-def cluster_cifar():
+def cluster_cifar(name="cifar"):
     cifar_checkpoint = "checkpoint/ckpt.t7"
     checkpoint = torch.load(cifar_checkpoint, map_location='cpu')
     lemniscate = checkpoint['lemniscate']
     train_dataset = datasets.CIFAR10Instance(root='./data/cifar', train=True, download=True, transform=None)
 
+    # Load X, y, idxs
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
     idxs = np.arange(len(train_dataset))
     X, y, idxs = balance_categories(X, y, idxs)
-    X, y, idxs = filter_categories(X, y, idxs, np.arange(10))
+    X, y, idxs = filter_categories(X, y, idxs, [i for i in range(10)])
+
+    # Vis nearest neighbor
+    nearest_neighbors(X, idxs, train_dataset, name=name)
+
+    # Cluster
     label = np.array([train_dataset.classes[i] for i in y])
-
     print(X.shape, label.shape)
-    pca_clustering(X, label, name="cifar")
-    tsne_clustering(X, label, name="cifar")
-    nearest_neighbors(X, idxs, train_dataset, name="cifar")
+    pca_clustering(X, label, name=name)
+    tsne_clustering(X, label, name=name)
 
-def cluster_imagenet():
+def cluster_imagenet(name="imagenet"):
     imagenet_checkpoint = "checkpoint/lemniscate_resnet18.pth.tar"
     checkpoint = torch.load(imagenet_checkpoint, map_location='cpu')
     lemniscate = checkpoint['lemniscate']
     train_dataset = datasets.ImageFolderInstance("./data/imagenet/train")
 
+    # Load X, y, idxs
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.targets)
     idxs = np.arange(len(train_dataset))
     X, y, idxs = balance_categories(X, y, idxs)
-    X, y, idxs = filter_categories(X, y, idxs, np.arange(10))
-    label = np.array([train_dataset.classes[i] for i in y])
+    X, y, idxs = filter_categories(X, y, idxs, [i for i in range(10)])
 
+    # Vis nearest neighbor
+    nearest_neighbors(X, idxs, train_dataset, name=name)
+
+    label = np.array([train_dataset.classes[i] for i in y])
     print(X.shape, label.shape)
-    pca_clustering(X, label, name="imagenet")
-    tsne_clustering(X, label, name="imagenet")
-    nearest_neighbors(X, idxs, train_dataset, name="imagenet")
+    pca_clustering(X, label, name=name)
+    tsne_clustering(X, label, name=name)
 
 def filter_categories(X, y, idxs, cats):
     X_out = []
@@ -79,7 +86,7 @@ def balance_categories(X, y, idxs, max_freq=1000):
     X_out = []
     y_out = []
     idxs_out = []
-    
+
     zipped = [(x,l,i) for x,l,i in zip(X, y, idxs)]
     random.seed(42)
     random.shuffle(zipped)
