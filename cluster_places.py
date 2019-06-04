@@ -24,6 +24,7 @@ def cluster_places(name="places"):
     idxs = np.arange(len(train_dataset))
     X, y, idxs = balance_categories(X, y, idxs, max_freq=1000)
     X, y, idxs = filter_categories(X, y, idxs, [i for i in range(11)])
+    print(X.shape, y.shape, idxs.shape)
 
     # Vis nearest neighbor
     nearest_neighbors(X, idxs, train_dataset, name=name)
@@ -45,10 +46,12 @@ def cluster_places_car(name="places_car"):
     X = lemniscate.memory.numpy()
     y = np.array(train_dataset.get_targets())
     idxs = np.arange(len(train_dataset))
-    X, y, idxs = balance_categories(X, y, idxs, max_freq=10000)
+    print(X.shape, y.shape, idxs.shape)
 
     # Vis nearest neighbor
     nearest_neighbors(X, idxs, train_dataset, name=name)
+
+    X, y, idxs = balance_categories(X, y, idxs, max_freq=10000)
 
     # Cluster
     label = np.array([train_dataset.get_label(i) for i in y])
@@ -73,13 +76,13 @@ def cluster_ade_car(name="ade_car"):
     y = np.array(train_dataset.get_targets())
     idxs = np.arange(len(train_dataset))
     X, y, idxs = balance_categories(X, y, idxs, max_freq=10000)
+    print(X.shape, y.shape, idxs.shape)
 
     # Vis nearest neighbor
     nearest_neighbors(X, idxs, train_dataset, name=name)
 
     # Cluster
     label = y > 8
-    print(X.shape, label.shape)
     pca_clustering(X, label, name=name)
     tsne_clustering(X, label, name=name)
     return X, label

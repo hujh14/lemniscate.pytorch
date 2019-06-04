@@ -104,7 +104,7 @@ def balance_categories(X, y, idxs, max_freq=1000):
     print("Balanced categories {}: {} -> {}".format(max_freq, X.shape, X_out.shape))
     return X_out, y_out, idxs_out
 
-def nearest_neighbors(X, idxs, dataset, n=5, name="name"):
+def nearest_neighbors(X, idxs, dataset, n=10, name="name"):
     print("Getting nearest neighbors...", X.shape, idxs.shape)
     start = time.time()
 
