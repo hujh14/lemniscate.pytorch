@@ -185,7 +185,7 @@ def main():
             best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
             lemniscate = checkpoint['lemniscate']
-            lemniscate_ade = checkpoint['lemniscate_ade']
+            # lemniscate_ade = checkpoint['lemniscate_ade']
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))

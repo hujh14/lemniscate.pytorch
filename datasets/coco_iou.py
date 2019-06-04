@@ -8,8 +8,8 @@ import os
 import random
 import numpy as np
 
-from coco import COCODataset, vis_mask
-from annotator_sim import SimulatedAnnotator
+from .coco import COCODataset, vis_mask
+from .annotator_sim import SimulatedAnnotator
 
 
 class COCOIOUDataset(COCODataset):
